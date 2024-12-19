@@ -140,9 +140,9 @@ namespace dll
 			void NullMoveFlag(char which_flag);
 
 			virtual float GetXAxisMove(float gear) const = 0;
-			virtual char Move(float gear, float dest_x, float dest_y, PROT_MESH platforms) = 0;
-			virtual char Jump(float gear, PROT_MESH platforms) = 0;
-			virtual char Fall(float gear, PROT_MESH platforms) = 0;
+			virtual char Move(float gear, float dest_x, float dest_y, PROT_MESH& platforms) = 0;
+			virtual char Jump(float gear, PROT_MESH& platforms) = 0;
+			virtual char Fall(float gear, PROT_MESH& platforms) = 0;
 			virtual void Release() = 0;
 	};
 
@@ -156,9 +156,9 @@ namespace dll
 			friend RUN_API BASE_CREATURE* CreatureFactory(char what_type, float start_x, float start_y);
 
 			float GetXAxisMove(float gear) const override;
-			char Move(float gear, float dest_x, float dest_y, PROT_MESH platforms) override;
-			char Jump(float gear, PROT_MESH platforms) override;
-			char Fall(float gear, PROT_MESH platforms) override;
+			char Move(float gear, float dest_x, float dest_y, PROT_MESH& platforms) override;
+			char Jump(float gear, PROT_MESH& platforms) override;
+			char Fall(float gear, PROT_MESH& platforms) override;
 			void Release() override;
 	};
 
@@ -172,9 +172,9 @@ namespace dll
 		friend RUN_API BASE_CREATURE* CreatureFactory(char what_type, float start_x, float start_y);
 
 		float GetXAxisMove(float gear) const override;
-		char Move(float gear, float dest_x, float dest_y, PROT_MESH platforms) override;
-		char Jump(float gear, PROT_MESH platforms) override;
-		char Fall(float gear, PROT_MESH platforms) override;
+		char Move(float gear, float dest_x, float dest_y, PROT_MESH& platforms) override;
+		char Jump(float gear, PROT_MESH& platforms) override;
+		char Fall(float gear, PROT_MESH& platforms) override;
 		void Release() override;
 	};
 

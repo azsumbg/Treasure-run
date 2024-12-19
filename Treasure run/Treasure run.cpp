@@ -79,6 +79,14 @@ int score = 0;
 int background_frame = 0;
 int background_delay = 0;
 
+float background_element_speed = 0;
+dirs background_element_dir = dirs::down;
+
+bool need_left_field = false;
+bool need_right_field = false;
+bool need_left_background = false;
+bool need_right_background = false;
+
 //////////////////////////////////////////////////
 
 ID2D1Factory* iFactory = nullptr;
@@ -126,8 +134,14 @@ ID2D1Bitmap* bmpEvil5[36] = { nullptr };
 
 //////////////////////////////////////////////////
 
+std::vector<dll::PROTON> vBackgrounds;
+std::vector<dll::PROTON> vFields;
+std::vector<dll::PROTON> vOnePlatforms;
+std::vector<dll::PROTON> vTwoPlatforms;
+std::vector<dll::PROTON> vThreePlatforms;
+std::vector<dll::PROTON> vFourPlatforms;
 
-
+dll::Creature Hero = nullptr;
 
 //////////////////////////////////////////////////
 
@@ -178,7 +192,7 @@ void ReleaseResources()
     if (!ClearHeap(&bmpPotion))LogError(L"Error releasing bmpPotion !");
 
     for (int i = 0; i < 20; i++)if (!ClearHeap(&bmpBackground[i]))LogError(L"Error releasing bmpBackground !");
-    for (int i = 0; i < 8; i++)if (!ClearHeap(&bmpBackground[i]))LogError(L"Error releasing bmpIntro !");
+    for (int i = 0; i < 8; i++)if (!ClearHeap(&bmpIntro[i]))LogError(L"Error releasing bmpIntro !");
 
     for (int i = 0; i < 4; i++)if (!ClearHeap(&bmpHeroL[i]))LogError(L"Error releasing bmpHeroL !");
     for (int i = 0; i < 4; i++)if (!ClearHeap(&bmpHeroR[i]))LogError(L"Error releasing bmpHeroR !");
@@ -219,7 +233,30 @@ void InitGame()
     wcscpy_s(current_player, L"ONE RUNNER");
     name_set = false;
 
+    background_element_speed = 0;
+    background_element_dir = dirs::down;
 
+    vBackgrounds.clear();
+    for (float i = -scr_width; i < 2 * scr_width; i += scr_width)
+        vBackgrounds.push_back(dll::PROTON(i, 50.0f, scr_width, ground));
+    vFields.clear();
+    for (float i = -scr_width; i < 2 * scr_width; i += scr_width)
+        vFields.push_back(dll::PROTON(i, ground, scr_width, 50.0f));
+
+    vOnePlatforms.clear();
+    vTwoPlatforms.clear();
+    vThreePlatforms.clear();
+    vFourPlatforms.clear();
+
+    need_left_field = false;
+    need_right_field = false;
+    need_left_background = false;
+    need_right_background = false;
+    
+    ClearHeap(&Hero);
+    Hero = dll::CreatureFactory(hero_type, scr_width / 2 - 100.0f, ground - 50.0f);
+
+    
 }
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -409,6 +446,69 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
         }
         break;
 
+    case WM_KEYDOWN:
+        if (Hero)
+        {
+            switch (wParam)
+            {
+            case VK_LEFT:
+                Hero->SetMoveFlag(run_flag);
+                Hero->dir = dirs::left;
+                break;
+
+            case VK_RIGHT:
+                Hero->SetMoveFlag(run_flag);
+                Hero->dir = dirs::right;
+                break;
+
+            case VK_UP:
+                if (!Hero->CheckMoveFlag(fall_flag) && !vFields.empty())
+                {
+                    size_t all_platforms_number = vFields.size() + vOnePlatforms.size() + vTwoPlatforms.size()
+                        + vThreePlatforms.size() + vFourPlatforms.size();
+
+                    dll::PROT_MESH AllPlatforms(all_platforms_number);
+                    for (int i = 0; i < vFields.size(); ++i)
+                    {
+                        dll::PROTON OnePlatform(vFields[i].x, vFields[i].y,
+                            vFields[i].GetWidth(), vFields[i].GetHeight());
+                        AllPlatforms.push_back(OnePlatform);
+                    }
+                    if (!vOnePlatforms.empty())
+                        for (int i = 0; i < vOnePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vOnePlatforms[i].x, vOnePlatforms[i].y,
+                                vOnePlatforms[i].GetWidth(), vOnePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vTwoPlatforms.empty())
+                        for (int i = 0; i < vTwoPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vTwoPlatforms[i].x, vTwoPlatforms[i].y,
+                                vTwoPlatforms[i].GetWidth(), vTwoPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vThreePlatforms.empty())
+                        for (int i = 0; i < vThreePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vThreePlatforms[i].x, vThreePlatforms[i].y,
+                                vThreePlatforms[i].GetWidth(), vThreePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vFourPlatforms.empty())
+                        for (int i = 0; i < vFourPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vFourPlatforms[i].x, vFourPlatforms[i].y,
+                                vFourPlatforms[i].GetWidth(), vFourPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    
+                    Hero->Jump((float)(level), AllPlatforms);
+                }
+                break;
+            }
+        }
+        break;
 
     default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
     }
@@ -825,7 +925,276 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
         ////////////////////////////////
 
+        if (Hero)
+        {
+            char current_action = Hero->GetMoveFlag();
 
+            switch (current_action)
+            {
+            case run_flag:
+                if (!vFields.empty())
+                {
+                    size_t all_platforms_number = vFields.size() + vOnePlatforms.size() + vTwoPlatforms.size()
+                        + vThreePlatforms.size() + vFourPlatforms.size();
+
+                    dll::PROT_MESH AllPlatforms(all_platforms_number);
+                    for (int i = 0; i < vFields.size(); ++i)
+                    {
+                        dll::PROTON OnePlatform(vFields[i].x, vFields[i].y,
+                            vFields[i].GetWidth(), vFields[i].GetHeight());
+                        AllPlatforms.push_back(OnePlatform);
+                    }
+                    if(!vOnePlatforms.empty())
+                        for (int i = 0; i < vOnePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vOnePlatforms[i].x, vOnePlatforms[i].y,
+                                vOnePlatforms[i].GetWidth(), vOnePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vTwoPlatforms.empty())
+                        for (int i = 0; i < vTwoPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vTwoPlatforms[i].x, vTwoPlatforms[i].y,
+                                vTwoPlatforms[i].GetWidth(), vTwoPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vThreePlatforms.empty())
+                        for (int i = 0; i < vThreePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vThreePlatforms[i].x, vThreePlatforms[i].y,
+                                vThreePlatforms[i].GetWidth(), vThreePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vFourPlatforms.empty())
+                        for (int i = 0; i < vFourPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vFourPlatforms[i].x, vFourPlatforms[i].y,
+                                vFourPlatforms[i].GetWidth(), vFourPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+
+                    if (Hero->dir == dirs::right)
+                    {
+                        Hero->Move((float)(level), scr_width, Hero->y, AllPlatforms);
+                        background_element_speed = 1.0f + (float)(level / 10);
+                        background_element_dir = dirs::left;
+                    }
+                    else if (Hero->dir == dirs::left)
+                    {
+                        Hero->Move((float)(level), 0, Hero->y, AllPlatforms);
+                        background_element_speed = 1.0f + (float)(level / 10);
+                        background_element_dir = dirs::right;
+                    }
+
+                    if (!Hero->CheckMoveFlag(run_flag))
+                    {
+                        std::wofstream deb(L".\\res\\data\\debug.dat");
+                        deb << static_cast<int>(Hero->GetMoveFlag());
+                        deb.close();
+                    }
+                }
+                break;
+
+            case jump_up_flag:
+                if (!vFields.empty())
+                {
+                    size_t all_platforms_number = vFields.size() + vOnePlatforms.size() + vTwoPlatforms.size()
+                        + vThreePlatforms.size() + vFourPlatforms.size();
+
+                    dll::PROT_MESH AllPlatforms(all_platforms_number);
+                    for (int i = 0; i < vFields.size(); ++i)
+                    {
+                        dll::PROTON OnePlatform(vFields[i].x, vFields[i].y,
+                            vFields[i].GetWidth(), vFields[i].GetHeight());
+                        AllPlatforms.push_back(OnePlatform);
+                    }
+                    if (!vOnePlatforms.empty())
+                        for (int i = 0; i < vOnePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vOnePlatforms[i].x, vOnePlatforms[i].y,
+                                vOnePlatforms[i].GetWidth(), vOnePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vTwoPlatforms.empty())
+                        for (int i = 0; i < vTwoPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vTwoPlatforms[i].x, vTwoPlatforms[i].y,
+                                vTwoPlatforms[i].GetWidth(), vTwoPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vThreePlatforms.empty())
+                        for (int i = 0; i < vThreePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vThreePlatforms[i].x, vThreePlatforms[i].y,
+                                vThreePlatforms[i].GetWidth(), vThreePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vFourPlatforms.empty())
+                        for (int i = 0; i < vFourPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vFourPlatforms[i].x, vFourPlatforms[i].y,
+                                vFourPlatforms[i].GetWidth(), vFourPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+
+                    Hero->Jump((float)(level), AllPlatforms);
+                    if (Hero->dir == dirs::right)
+                    {
+                        background_element_speed = 1.0f + (float)(level / 10);
+                        background_element_dir = dirs::left;
+                    }
+                    else if (Hero->dir == dirs::left)
+                    {
+                        background_element_speed = 1.0f + (float)(level / 10);
+                        background_element_dir = dirs::right;
+                    }
+                }
+                break;
+
+            case jump_down_flag:
+                if (!vFields.empty())
+                {
+                    size_t all_platforms_number = vFields.size() + vOnePlatforms.size() + vTwoPlatforms.size()
+                        + vThreePlatforms.size() + vFourPlatforms.size();
+
+                    dll::PROT_MESH AllPlatforms(all_platforms_number);
+                    for (int i = 0; i < vFields.size(); ++i)
+                    {
+                        dll::PROTON OnePlatform(vFields[i].x, vFields[i].y,
+                            vFields[i].GetWidth(), vFields[i].GetHeight());
+                        AllPlatforms.push_back(OnePlatform);
+                    }
+                    if (!vOnePlatforms.empty())
+                        for (int i = 0; i < vOnePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vOnePlatforms[i].x, vOnePlatforms[i].y,
+                                vOnePlatforms[i].GetWidth(), vOnePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vTwoPlatforms.empty())
+                        for (int i = 0; i < vTwoPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vTwoPlatforms[i].x, vTwoPlatforms[i].y,
+                                vTwoPlatforms[i].GetWidth(), vTwoPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vThreePlatforms.empty())
+                        for (int i = 0; i < vThreePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vThreePlatforms[i].x, vThreePlatforms[i].y,
+                                vThreePlatforms[i].GetWidth(), vThreePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vFourPlatforms.empty())
+                        for (int i = 0; i < vFourPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vFourPlatforms[i].x, vFourPlatforms[i].y,
+                                vFourPlatforms[i].GetWidth(), vFourPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+
+                    Hero->Jump((float)(level), AllPlatforms);
+                    if (Hero->dir == dirs::right)
+                    {
+                        background_element_speed = 1.0f + (float)(level / 10);
+                        background_element_dir = dirs::left;
+                    }
+                    else if (Hero->dir == dirs::left)
+                    {
+                        background_element_speed = 1.0f + (float)(level / 10);
+                        background_element_dir = dirs::right;
+                    }
+                }
+                break;
+
+            case fall_flag:
+                if (!vFields.empty())
+                {
+                    size_t all_platforms_number = vFields.size() + vOnePlatforms.size() + vTwoPlatforms.size()
+                        + vThreePlatforms.size() + vFourPlatforms.size();
+
+                    dll::PROT_MESH AllPlatforms(all_platforms_number);
+                    for (int i = 0; i < vFields.size(); ++i)
+                    {
+                        dll::PROTON OnePlatform(vFields[i].x, vFields[i].y,
+                            vFields[i].GetWidth(), vFields[i].GetHeight());
+                        AllPlatforms.push_back(OnePlatform);
+                    }
+                    if (!vOnePlatforms.empty())
+                        for (int i = 0; i < vOnePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vOnePlatforms[i].x, vOnePlatforms[i].y,
+                                vOnePlatforms[i].GetWidth(), vOnePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vTwoPlatforms.empty())
+                        for (int i = 0; i < vTwoPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vTwoPlatforms[i].x, vTwoPlatforms[i].y,
+                                vTwoPlatforms[i].GetWidth(), vTwoPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vThreePlatforms.empty())
+                        for (int i = 0; i < vThreePlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vThreePlatforms[i].x, vThreePlatforms[i].y,
+                                vThreePlatforms[i].GetWidth(), vThreePlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+                    if (!vFourPlatforms.empty())
+                        for (int i = 0; i < vFourPlatforms.size(); ++i)
+                        {
+                            dll::PROTON OnePlatform(vFourPlatforms[i].x, vFourPlatforms[i].y,
+                                vFourPlatforms[i].GetWidth(), vFourPlatforms[i].GetHeight());
+                            AllPlatforms.push_back(OnePlatform);
+                        }
+
+                    Hero->Fall((float)(level), AllPlatforms);
+                    background_element_speed = 0;
+                    background_element_dir = dirs::down;
+                }
+                break;
+            }
+        }
+
+        if (!vFields.empty())
+        {
+            for (int i = 0; i < vFields.size(); i++)
+            {
+                if (background_element_dir == dirs::left)
+                {
+                    vFields[i].x -= background_element_speed;
+                    vFields[i].SetEdges();
+                    if (vFields[i].ex <= -scr_width)
+                    {
+                        vFields.erase(vFields.begin() + i);
+                        need_right_field = true;
+                        break;
+                    }
+                }
+                else if (background_element_dir == dirs::right)
+                {
+                    vFields[i].x += background_element_speed;
+                    vFields[i].SetEdges();
+                    if (vFields[i].x >= 2 * scr_width)
+                    {
+                        vFields.erase(vFields.begin() + i);
+                        need_left_field = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (need_left_field)
+        {
+            need_left_field = false;
+            vFields.push_back(dll::PROTON(-scr_width, ground, scr_width, 50.0f));
+        }
+        if (need_right_field)
+        {
+            need_right_field = false;
+            vFields.push_back(dll::PROTON(scr_width, ground, scr_width, 50.0f));
+        }
 
 
         // DRAW THINGS ******************
@@ -854,8 +1223,28 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             ++background_frame;
             if(background_frame>19)background_frame = 0;
         }
-        Draw->DrawBitmap(bmpBackground[background_frame], D2D1::RectF(0, 50, scr_width, scr_height));
 
+        if(!vBackgrounds.empty())
+        for(int i=0;i<vBackgrounds.size();i++)
+            Draw->DrawBitmap(bmpBackground[background_frame], D2D1::RectF(vBackgrounds[i].x,vBackgrounds[i].y,
+                vBackgrounds[i].ex, vBackgrounds[i].ey));
+        if (!vFields.empty())
+            for (int i = 0; i < vFields.size(); i++)
+                Draw->DrawBitmap(bmpBaseField, D2D1::RectF(vFields[i].x, vFields[i].y, vFields[i].ex, vFields[i].ey));
+
+        if (Hero)
+        {
+            switch (Hero->dir)
+            {
+            case dirs::left:
+                Draw->DrawBitmap(bmpHeroL[Hero->GetFrame()], Resizer(bmpHeroL[Hero->GetFrame()], Hero->x, Hero->y));
+                break;
+
+            case dirs::right:
+                Draw->DrawBitmap(bmpHeroR[Hero->GetFrame()], Resizer(bmpHeroR[Hero->GetFrame()], Hero->x, Hero->y));
+                break;
+            }
+        }
 
 
         //////////////////////////////////////
