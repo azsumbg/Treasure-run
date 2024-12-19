@@ -1196,7 +1196,169 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             vFields.push_back(dll::PROTON(scr_width, ground, scr_width, 50.0f));
         }
 
+        if (!vBackgrounds.empty() && Hero)
+        {
+            for (int i = 0; i < vBackgrounds.size(); i++)
+            {
+                vBackgrounds[i].x += Hero->GetXAxisMove((float)(level));
+                vBackgrounds[i].SetEdges();
+                if (vBackgrounds[i].ex <= -scr_height)
+                {
+                    need_right_background = true;
+                    vBackgrounds.erase(vBackgrounds.begin() + i);
+                    break;
+                }
+                if (vBackgrounds[i].x >= 2 * scr_height)
+                {
+                    need_left_background = true;
+                    vBackgrounds.erase(vBackgrounds.begin() + i);
+                    break;
+                }
+            }
+        }
+        if (need_left_background)
+        {
+            need_left_background = false;
+            vBackgrounds.push_back(dll::PROTON(-scr_width, 50.0f, scr_width, ground));
+        }
+        if (need_right_background)
+        {
+            need_right_background = false;
+            vBackgrounds.push_back(dll::PROTON(scr_width, 50.0f, scr_width, ground));
+        }
 
+        // CREATE PLATFORMS ***********************
+
+        if (vOnePlatforms.size() < 2 && RandEngine(0, 1500) == 32)
+        {
+            bool can_be_pushed = true;
+
+            if (!vOnePlatforms.empty())
+                if (vOnePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vTwoPlatforms.empty())
+                if (vTwoPlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vThreePlatforms.empty())
+                if (vThreePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vFourPlatforms.empty())
+                if (vFourPlatforms.back().ex >= scr_width)can_be_pushed = false;
+
+            if (can_be_pushed)
+                vOnePlatforms.push_back(dll::PROTON(scr_width + (float)(RandEngine(140, 200)), ground - 80.0f, 140.0f, 80.0f));
+        }
+        if (!vOnePlatforms.empty() && Hero)
+        {
+            for (std::vector<dll::PROTON>::iterator plat = vOnePlatforms.begin(); plat < vOnePlatforms.end(); ++plat)
+            {
+                plat->x += Hero->GetXAxisMove((float)(level));
+                plat->SetEdges();
+                if (plat->ex <= -scr_width || plat->x >= 2 * scr_width)
+                {
+                    vOnePlatforms.erase(plat);
+                    break;
+                }
+            }
+        }
+        
+        if (vTwoPlatforms.size() < 2 && RandEngine(0, 4000) == 118)
+        {
+            bool can_be_pushed = true;
+
+            if (!vOnePlatforms.empty())
+                if (vOnePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vTwoPlatforms.empty())
+                if (vTwoPlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vThreePlatforms.empty())
+                if (vThreePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vFourPlatforms.empty())
+                if (vFourPlatforms.back().ex >= scr_width)can_be_pushed = false;
+
+            if (can_be_pushed)
+                vTwoPlatforms.push_back(dll::PROTON(scr_width + (float)(RandEngine(140, 200)), ground - 94.0f, 150.0f, 94.0f));
+        }
+        if (!vTwoPlatforms.empty() && Hero)
+        {
+            for (std::vector<dll::PROTON>::iterator plat = vTwoPlatforms.begin(); plat < vTwoPlatforms.end(); ++plat)
+            {
+                plat->x += Hero->GetXAxisMove((float)(level));
+                plat->SetEdges();
+                if (plat->ex <= -scr_width || plat->x >= 2 * scr_width)
+                {
+                    vTwoPlatforms.erase(plat);
+                    break;
+                }
+            }
+        }
+        
+        if (vThreePlatforms.size() < 2 && RandEngine(0, 500) == 66)
+        {
+            bool can_be_pushed = true;
+
+            if (!vOnePlatforms.empty())
+                if (vOnePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vTwoPlatforms.empty())
+                if (vTwoPlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vThreePlatforms.empty())
+                if (vThreePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vFourPlatforms.empty())
+                if (vFourPlatforms.back().ex >= scr_width)can_be_pushed = false;
+
+            if (can_be_pushed)
+                vThreePlatforms.push_back(dll::PROTON(scr_width + (float)(RandEngine(140, 200)), ground - 90.0f, 110.0f, 90.0f));
+        }
+        if (!vThreePlatforms.empty() && Hero)
+        {
+            for (std::vector<dll::PROTON>::iterator plat = vThreePlatforms.begin(); plat < vThreePlatforms.end(); ++plat)
+            {
+                plat->x += Hero->GetXAxisMove((float)(level));
+                plat->SetEdges();
+                if (plat->ex <= -scr_width || plat->x >= 2 * scr_width)
+                {
+                    vThreePlatforms.erase(plat);
+                    break;
+                }
+            }
+        }
+
+        if (vFourPlatforms.size() < 2 && RandEngine(0, 1000) == 83)
+        {
+            bool can_be_pushed = true;
+
+            if (!vOnePlatforms.empty())
+                if (vOnePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vTwoPlatforms.empty())
+                if (vTwoPlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vThreePlatforms.empty())
+                if (vThreePlatforms.back().ex >= scr_width)can_be_pushed = false;
+            if (!vFourPlatforms.empty())
+                if (vFourPlatforms.back().ex >= scr_width)can_be_pushed = false;
+
+            if (can_be_pushed)
+                vFourPlatforms.push_back(dll::PROTON(scr_width + (float)(RandEngine(140, 200)), ground - 100.0f, 85.0f, 100.0f));
+        }
+        if (!vFourPlatforms.empty() && Hero)
+        {
+            for (std::vector<dll::PROTON>::iterator plat = vFourPlatforms.begin(); plat < vFourPlatforms.end(); ++plat)
+            {
+                plat->x += Hero->GetXAxisMove((float)(level));
+                plat->SetEdges();
+                if (plat->ex <= -scr_width || plat->x >= 2 * scr_width)
+                {
+                    vFourPlatforms.erase(plat);
+                    break;
+                }
+            }
+        }
+        /////////////////////////////////////////////////////////////////////
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         // DRAW THINGS ******************
 
         Draw->BeginDraw();
@@ -1231,6 +1393,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         if (!vFields.empty())
             for (int i = 0; i < vFields.size(); i++)
                 Draw->DrawBitmap(bmpBaseField, D2D1::RectF(vFields[i].x, vFields[i].y, vFields[i].ex, vFields[i].ey));
+
+        if (!vOnePlatforms.empty())
+            for (int i = 0; i < vOnePlatforms.size(); ++i)
+                Draw->DrawBitmap(bmpPlatform1, D2D1::RectF(vOnePlatforms[i].x, vOnePlatforms[i].y,
+                    vOnePlatforms[i].ex, vOnePlatforms[i].ey));
+        if (!vTwoPlatforms.empty())
+            for (int i = 0; i < vTwoPlatforms.size(); ++i)
+                Draw->DrawBitmap(bmpPlatform2, D2D1::RectF(vTwoPlatforms[i].x, vTwoPlatforms[i].y,
+                    vTwoPlatforms[i].ex, vTwoPlatforms[i].ey));
+        if (!vThreePlatforms.empty())
+            for (int i = 0; i < vThreePlatforms.size(); ++i)
+                Draw->DrawBitmap(bmpPlatform3, D2D1::RectF(vThreePlatforms[i].x, vThreePlatforms[i].y,
+                    vThreePlatforms[i].ex, vThreePlatforms[i].ey));
+        if (!vFourPlatforms.empty())
+            for (int i = 0; i < vFourPlatforms.size(); ++i)
+                Draw->DrawBitmap(bmpPlatform4, D2D1::RectF(vFourPlatforms[i].x, vFourPlatforms[i].y,
+                    vFourPlatforms[i].ex, vFourPlatforms[i].ey));
 
         if (Hero)
         {
