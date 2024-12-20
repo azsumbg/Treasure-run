@@ -143,6 +143,8 @@ std::vector<dll::PROTON> vFourPlatforms;
 
 dll::Creature Hero = nullptr;
 
+std::vector<dll::Creature> vEvils;
+
 //////////////////////////////////////////////////
 
 template<typename T> concept HasRelease = requires(T check_var)
@@ -170,7 +172,7 @@ void ReleaseResources()
     if (!ClearHeap(&iFactory))LogError(L"Error releasing iFactory !");
     if (!ClearHeap(&Draw))LogError(L"Error releasing Draw !");
     if (!ClearHeap(&bckgBrush))LogError(L"Error releasing bckgBrush !");
-    if (!ClearHeap(&shootBrush))LogError(L"Error releasing shootBrush !");
+    ClearHeap(&shootBrush);
     if (!ClearHeap(&txtBrush))LogError(L"Error releasing txtBrush !");
     if (!ClearHeap(&hgltBrush))LogError(L"Error releasing hgltBrush !");
     if (!ClearHeap(&inactBrush))LogError(L"Error releasing inactBrush !");
@@ -256,6 +258,9 @@ void InitGame()
     ClearHeap(&Hero);
     Hero = dll::CreatureFactory(hero_type, scr_width / 2 - 100.0f, ground - 50.0f);
 
+    if (!vEvils.empty())
+        for (int i = 0; i < vEvils.size(); ++i)ClearHeap(&vEvils[i]);
+    vEvils.clear();
     
 }
 
@@ -505,6 +510,11 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                     
                     Hero->Jump((float)(level), AllPlatforms);
                 }
+                break;
+
+            case VK_DOWN:
+                if (Hero)
+                    if (Hero->CheckMoveFlag(run_flag))Hero->SetMoveFlag(stop_flag);
                 break;
             }
         }
@@ -975,6 +985,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                     if (Hero->dir == dirs::right)
                     {
+                        
                         Hero->Move((float)(level), scr_width, Hero->y, AllPlatforms);
                         background_element_speed = 1.0f + (float)(level / 10);
                         background_element_dir = dirs::left;
@@ -984,13 +995,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         Hero->Move((float)(level), 0, Hero->y, AllPlatforms);
                         background_element_speed = 1.0f + (float)(level / 10);
                         background_element_dir = dirs::right;
-                    }
-
-                    if (!Hero->CheckMoveFlag(run_flag))
-                    {
-                        std::wofstream deb(L".\\res\\data\\debug.dat");
-                        deb << static_cast<int>(Hero->GetMoveFlag());
-                        deb.close();
                     }
                 }
                 break;
@@ -1154,33 +1158,42 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     background_element_dir = dirs::down;
                 }
                 break;
+
+            case stop_flag:
+                background_element_speed = 0;
+                background_element_dir = dirs::down;
+                break;
             }
         }
 
-        if (!vFields.empty())
+        if (!vFields.empty() && Hero)
         {
-            for (int i = 0; i < vFields.size(); i++)
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
             {
-                if (background_element_dir == dirs::left)
+                for (int i = 0; i < vFields.size(); i++)
                 {
-                    vFields[i].x -= background_element_speed;
-                    vFields[i].SetEdges();
-                    if (vFields[i].ex <= -scr_width)
+                    if (background_element_dir == dirs::left)
                     {
-                        vFields.erase(vFields.begin() + i);
-                        need_right_field = true;
-                        break;
+                        vFields[i].x -= background_element_speed;
+                        vFields[i].SetEdges();
+                        if (vFields[i].ex <= -scr_width)
+                        {
+                            vFields.erase(vFields.begin() + i);
+                            need_right_field = true;
+                            break;
+                        }
                     }
-                }
-                else if (background_element_dir == dirs::right)
-                {
-                    vFields[i].x += background_element_speed;
-                    vFields[i].SetEdges();
-                    if (vFields[i].x >= 2 * scr_width)
+                    else if (background_element_dir == dirs::right)
                     {
-                        vFields.erase(vFields.begin() + i);
-                        need_left_field = true;
-                        break;
+                        vFields[i].x += background_element_speed;
+                        vFields[i].SetEdges();
+                        if (vFields[i].x >= 2 * scr_width)
+                        {
+                            vFields.erase(vFields.begin() + i);
+                            need_left_field = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -1198,21 +1211,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
         if (!vBackgrounds.empty() && Hero)
         {
-            for (int i = 0; i < vBackgrounds.size(); i++)
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
             {
-                vBackgrounds[i].x += Hero->GetXAxisMove((float)(level));
-                vBackgrounds[i].SetEdges();
-                if (vBackgrounds[i].ex <= -scr_height)
+                for (int i = 0; i < vBackgrounds.size(); i++)
                 {
-                    need_right_background = true;
-                    vBackgrounds.erase(vBackgrounds.begin() + i);
-                    break;
-                }
-                if (vBackgrounds[i].x >= 2 * scr_height)
-                {
-                    need_left_background = true;
-                    vBackgrounds.erase(vBackgrounds.begin() + i);
-                    break;
+                    vBackgrounds[i].x += Hero->GetXAxisMove((float)(level));
+                    vBackgrounds[i].SetEdges();
+                    if (vBackgrounds[i].ex <= -scr_height)
+                    {
+                        need_right_background = true;
+                        vBackgrounds.erase(vBackgrounds.begin() + i);
+                        break;
+                    }
+                    if (vBackgrounds[i].x >= 2 * scr_height)
+                    {
+                        need_left_background = true;
+                        vBackgrounds.erase(vBackgrounds.begin() + i);
+                        break;
+                    }
                 }
             }
         }
@@ -1247,6 +1264,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         if (!vOnePlatforms.empty() && Hero)
         {
+            char stopped = Hero->GetMoveFlag();
+            if(stopped != stop_flag)
             for (std::vector<dll::PROTON>::iterator plat = vOnePlatforms.begin(); plat < vOnePlatforms.end(); ++plat)
             {
                 plat->x += Hero->GetXAxisMove((float)(level));
@@ -1277,6 +1296,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         if (!vTwoPlatforms.empty() && Hero)
         {
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
             for (std::vector<dll::PROTON>::iterator plat = vTwoPlatforms.begin(); plat < vTwoPlatforms.end(); ++plat)
             {
                 plat->x += Hero->GetXAxisMove((float)(level));
@@ -1307,6 +1328,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         if (!vThreePlatforms.empty() && Hero)
         {
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
             for (std::vector<dll::PROTON>::iterator plat = vThreePlatforms.begin(); plat < vThreePlatforms.end(); ++plat)
             {
                 plat->x += Hero->GetXAxisMove((float)(level));
@@ -1337,6 +1360,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         if (!vFourPlatforms.empty() && Hero)
         {
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
             for (std::vector<dll::PROTON>::iterator plat = vFourPlatforms.begin(); plat < vFourPlatforms.end(); ++plat)
             {
                 plat->x += Hero->GetXAxisMove((float)(level));
@@ -1350,7 +1375,89 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         /////////////////////////////////////////////////////////////////////
         
-        
+        //CREATE AND MOVE EVILS *****************************
+
+        if (vEvils.size() < 8 + level && RandEngine(0, 300) == 222)
+        {
+            int atype = RandEngine(0, 4);
+            
+            switch (atype)
+            {
+            case 0:
+                vEvils.push_back(dll::CreatureFactory(evil1_type, scr_width + (float)(RandEngine(0, 50)), ground - 43.0f));
+                break;
+
+            case 1:
+                vEvils.push_back(dll::CreatureFactory(evil2_type, scr_width + (float)(RandEngine(0, 50)), ground - 40.0f));
+                break;
+
+            case 2:
+                vEvils.push_back(dll::CreatureFactory(evil3_type, scr_width + (float)(RandEngine(00, 50)), ground - 45.0f));
+                break;
+
+            case 3:
+                vEvils.push_back(dll::CreatureFactory(evil4_type, scr_width + (float)(RandEngine(0, 50)), ground - 30.0f));
+                break;
+
+            case 4:
+                vEvils.push_back(dll::CreatureFactory(evil5_type, scr_width + (float)(RandEngine(0, 50)), ground - 50.0f));
+                break;
+
+            }
+        }
+
+        if (!vEvils.empty())
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
+            {
+                size_t obst_num = vFields.size() + vOnePlatforms.size() + vTwoPlatforms.size()
+                    + vThreePlatforms.size() + vFourPlatforms.size();
+                
+                dll::PROT_MESH AllObstacles(obst_num);
+
+                for (int i = 0; i < vFields.size(); ++i)
+                {
+                    dll::PROTON obstacle(dll::PROTON(vFields[i].x, vFields[i].y, scr_width, 50.0f));
+                    AllObstacles.push_back(obstacle);
+                }
+                if(!vOnePlatforms.empty())
+                    for (int i = 0; i < vOnePlatforms.size(); ++i)
+                    {
+                        dll::PROTON obstacle(dll::PROTON(vOnePlatforms[i].x, vOnePlatforms[i].y, 140.0f, 80.0f));
+                        AllObstacles.push_back(obstacle);
+                    }
+                if (!vTwoPlatforms.empty())
+                    for (int i = 0; i < vTwoPlatforms.size(); ++i)
+                    {
+                        dll::PROTON obstacle(dll::PROTON(vTwoPlatforms[i].x, vTwoPlatforms[i].y, 150.0f, 94.0f));
+                        AllObstacles.push_back(obstacle);
+                    }
+                if (!vThreePlatforms.empty())
+                    for (int i = 0; i < vThreePlatforms.size(); ++i)
+                    {
+                        dll::PROTON obstacle(dll::PROTON(vThreePlatforms[i].x, vThreePlatforms[i].y, 110.0f, 90.0f));
+                        AllObstacles.push_back(obstacle);
+                    }
+                if (!vFourPlatforms.empty())
+                    for (int i = 0; i < vFourPlatforms.size(); ++i)
+                    {
+                        dll::PROTON obstacle(dll::PROTON(vFourPlatforms[i].x, vFourPlatforms[i].y, 85.0f, 100.0f));
+                        AllObstacles.push_back(obstacle);
+                    }
+
+                char action = (*evil)->GetMoveFlag();
+                
+                if (action == run_flag && Hero)
+                {
+                    (*evil)->Move((float)(level), Hero->x, (*evil)->y, AllObstacles);
+                }
+                else if (action == fall_flag)(*evil)->Fall((float)(level), AllObstacles);
+             
+            }
+        }
+
+
+        ///////////////////////////////////////////
         
         
         
@@ -1422,6 +1529,50 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             case dirs::right:
                 Draw->DrawBitmap(bmpHeroR[Hero->GetFrame()], Resizer(bmpHeroR[Hero->GetFrame()], Hero->x, Hero->y));
                 break;
+            }
+        }
+
+        if (!vEvils.empty())
+        {
+            for (int i = 0; i < vEvils.size(); i++)
+            {
+                char type = vEvils[i]->GetTypeFlag();
+
+                switch (type)
+                {
+                case evil1_type:
+                    if (vEvils[i]->dir == dirs::left)
+                        Draw->DrawBitmap(bmpEvil1L[vEvils[i]->GetFrame()], Resizer(bmpEvil1L[vEvils[i]->GetFrame()],
+                            vEvils[i]->x, vEvils[i]->y));
+                    else if (vEvils[i]->dir == dirs::right)
+                        Draw->DrawBitmap(bmpEvil1R[vEvils[i]->GetFrame()], Resizer(bmpEvil1R[vEvils[i]->GetFrame()],
+                            vEvils[i]->x, vEvils[i]->y));
+                    break;
+
+                case evil2_type:
+                    Draw->DrawBitmap(bmpEvil2[vEvils[i]->GetFrame()], Resizer(bmpEvil2[vEvils[i]->GetFrame()],
+                            vEvils[i]->x, vEvils[i]->y));
+                    break;
+
+                case evil3_type:
+                    if (vEvils[i]->dir == dirs::left)
+                        Draw->DrawBitmap(bmpEvil3L[vEvils[i]->GetFrame()], Resizer(bmpEvil3L[vEvils[i]->GetFrame()],
+                            vEvils[i]->x, vEvils[i]->y));
+                    else if (vEvils[i]->dir == dirs::right)
+                        Draw->DrawBitmap(bmpEvil3R[vEvils[i]->GetFrame()], Resizer(bmpEvil3R[vEvils[i]->GetFrame()],
+                            vEvils[i]->x, vEvils[i]->y));
+                    break;
+
+                case evil4_type:
+                    Draw->DrawBitmap(bmpEvil4[vEvils[i]->GetFrame()], Resizer(bmpEvil4[vEvils[i]->GetFrame()],
+                        vEvils[i]->x, vEvils[i]->y));
+                    break;
+
+                case evil5_type:
+                    Draw->DrawBitmap(bmpEvil5[vEvils[i]->GetFrame()], Resizer(bmpEvil5[vEvils[i]->GetFrame()],
+                        vEvils[i]->x, vEvils[i]->y));
+                    break;
+                }
             }
         }
 
