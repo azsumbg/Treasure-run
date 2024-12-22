@@ -141,6 +141,8 @@ std::vector<dll::PROTON> vTwoPlatforms;
 std::vector<dll::PROTON> vThreePlatforms;
 std::vector<dll::PROTON> vFourPlatforms;
 
+std::vector<dll::PROTON> vShots;
+
 dll::Creature Hero = nullptr;
 
 std::vector<dll::Creature> vEvils;
@@ -261,6 +263,8 @@ void InitGame()
     if (!vEvils.empty())
         for (int i = 0; i < vEvils.size(); ++i)ClearHeap(&vEvils[i]);
     vEvils.clear();
+
+    vShots.clear();
     
 }
 
@@ -1406,7 +1410,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
-        if (!vEvils.empty())
+        if (!vEvils.empty() && Hero)
         {
             for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
             {
@@ -1447,16 +1451,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                 char action = (*evil)->GetMoveFlag();
                 
-                if (action == run_flag && Hero)
-                {
-                    (*evil)->Move((float)(level), Hero->x, (*evil)->y, AllObstacles);
-                }
+                if (Hero->ey < (*evil)->y && RandEngine(0, 5) == 3 && action != jump_up_flag && action != jump_down_flag)
+                    (*evil)->Jump((float)(level), AllObstacles);
+                    
+                
+                if (action == run_flag) (*evil)->Move((float)(level), Hero->x, (*evil)->y, AllObstacles);
                 else if (action == fall_flag)(*evil)->Fall((float)(level), AllObstacles);
-             
+                else if (action == jump_up_flag || action == jump_down_flag) (*evil)->Jump((float)(level), AllObstacles);
             }
         }
 
-
+        
         ///////////////////////////////////////////
         
         
