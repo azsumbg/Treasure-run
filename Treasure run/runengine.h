@@ -178,6 +178,25 @@ namespace dll
 		void Release() override;
 	};
 
+	class RUN_API SHOT :public PROTON
+	{
+	private:
+		float move_sx = 0;
+		float move_sy = 0;
+		float move_ex = 0;
+		float move_ey = 0;
+		float intercept = 0;
+		float slope = 0;
+		bool hor_line = false;
+		bool vert_line = false;
+
+	public:
+
+		SHOT(float init_x, float init_y, float target_x, float target_y);
+
+		bool Move(float gear);
+	};
+
 	/////////////////////////////////////////
 	typedef BASE_CREATURE* Creature;
 

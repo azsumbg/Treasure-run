@@ -93,7 +93,6 @@ ID2D1Factory* iFactory = nullptr;
 ID2D1HwndRenderTarget* Draw = nullptr;
 
 ID2D1RadialGradientBrush* bckgBrush = nullptr;
-ID2D1RadialGradientBrush* shootBrush = nullptr;
 ID2D1SolidColorBrush* txtBrush = nullptr;
 ID2D1SolidColorBrush* hgltBrush = nullptr;
 ID2D1SolidColorBrush* inactBrush = nullptr;
@@ -141,11 +140,15 @@ std::vector<dll::PROTON> vTwoPlatforms;
 std::vector<dll::PROTON> vThreePlatforms;
 std::vector<dll::PROTON> vFourPlatforms;
 
-std::vector<dll::PROTON> vShots;
-
 dll::Creature Hero = nullptr;
 
 std::vector<dll::Creature> vEvils;
+
+std::vector<dll::PROTON> vCrystals;
+std::vector<dll::PROTON> vGolds;
+std::vector<dll::PROTON> vLifes;
+
+std::vector<dll::SHOT> vShots;
 
 //////////////////////////////////////////////////
 
@@ -174,7 +177,6 @@ void ReleaseResources()
     if (!ClearHeap(&iFactory))LogError(L"Error releasing iFactory !");
     if (!ClearHeap(&Draw))LogError(L"Error releasing Draw !");
     if (!ClearHeap(&bckgBrush))LogError(L"Error releasing bckgBrush !");
-    ClearHeap(&shootBrush);
     if (!ClearHeap(&txtBrush))LogError(L"Error releasing txtBrush !");
     if (!ClearHeap(&hgltBrush))LogError(L"Error releasing hgltBrush !");
     if (!ClearHeap(&inactBrush))LogError(L"Error releasing inactBrush !");
@@ -264,8 +266,12 @@ void InitGame()
         for (int i = 0; i < vEvils.size(); ++i)ClearHeap(&vEvils[i]);
     vEvils.clear();
 
+
+    vCrystals.clear();
+    vGolds.clear();
+    vLifes.clear();
+
     vShots.clear();
-    
 }
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -521,6 +527,15 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                     if (Hero->CheckMoveFlag(run_flag))Hero->SetMoveFlag(stop_flag);
                 break;
             }
+        }
+        break;
+
+    case WM_LBUTTONDOWN:
+        if (Hero)
+        {
+            vShots.push_back(dll::SHOT(Hero->x + Hero->GetWidth() / 2, Hero->y + Hero->GetHeight() / 2,
+                LOWORD(lParam), HIWORD(lParam)));
+            if (sound)mciSendString(L"play .\\res\\snd\\shot.wav", NULL, NULL, NULL);
         }
         break;
 
@@ -1451,7 +1466,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                 char action = (*evil)->GetMoveFlag();
                 
-                if (Hero->ey < (*evil)->y && RandEngine(0, 5) == 3 && action != jump_up_flag && action != jump_down_flag)
+                if (Hero->ey < (*evil)->y && RandEngine(0, 100) == 66 && action != jump_up_flag && action != jump_down_flag)
                     (*evil)->Jump((float)(level), AllObstacles);
                     
                 
@@ -1461,7 +1476,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
-        
+        if (!vShots.empty())
+        {
+            for (std::vector<dll::SHOT>::iterator shot = vShots.begin(); shot < vShots.end(); ++shot)
+            {
+                if (!shot->Move(float(level)))
+                {
+                    vShots.erase(shot);
+                    break;
+                }
+            }
+        }
+
+
+
+
+
         ///////////////////////////////////////////
         
         
@@ -1577,6 +1607,33 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     Draw->DrawBitmap(bmpEvil5[vEvils[i]->GetFrame()], Resizer(bmpEvil5[vEvils[i]->GetFrame()],
                         vEvils[i]->x, vEvils[i]->y));
                     break;
+                }
+            }
+        }
+
+        if (!vShots.empty())
+        {
+            for (std::vector<dll::SHOT>::iterator shot = vShots.begin(); shot < vShots.end(); shot++)
+            {
+                ID2D1RadialGradientBrush* shootBrush = nullptr;
+                D2D1_GRADIENT_STOP gStops[2]{};
+                ID2D1GradientStopCollection* stColl = nullptr;
+
+                gStops[0].position = 0;
+                gStops[0].color = D2D1::ColorF(D2D1::ColorF::Violet);
+                gStops[1].position = 1.0f;
+                gStops[1].color = D2D1::ColorF(D2D1::ColorF::Orange);
+
+                Draw->CreateGradientStopCollection(gStops, 2, &stColl);
+                if (stColl)
+                {
+                    Draw->CreateRadialGradientBrush(D2D1::RadialGradientBrushProperties(D2D1::Point2F(shot->x, shot->y),
+                        D2D1::Point2F(0, 0), shot->GetWidth() / 2, shot->GetHeight() / 2), stColl, &shootBrush);
+                    if (shootBrush)
+                        Draw->FillEllipse(D2D1::Ellipse(D2D1::Point2F(shot->x, shot->y),
+                            shot->GetWidth() / 2, shot->GetHeight() / 2), shootBrush);
+                    ClearHeap(&shootBrush);
+                    ClearHeap(&stColl);
                 }
             }
         }
