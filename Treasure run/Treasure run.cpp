@@ -1502,7 +1502,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             {
                 for (std::vector<dll::SHOT>::iterator shot = vShots.begin(); shot < vShots.end(); shot++)
                 {
-                    if (!((*evil)->x > shot->ex || (*evil)->ex < shot->x || (*evil)->y > shot->ey || (*evil)->ey < shot->y))
+                    float a = (float)(pow((abs(((*evil)->x + (*evil)->GetWidth() / 2) - (shot->x + shot->GetWidth() / 2))), 2));
+                    float b = (float)(pow((abs(((*evil)->y + (*evil)->GetHeight() / 2) - (shot->y + shot->GetHeight() / 2))), 2));
+                    float distance = sqrt(a + b);
+
+                    if ((((*evil)->GetWidth() / 2 + shot->GetWidth() / 2) > distance))
                     {
                         (*evil)->lifes -= 20;
                         vShots.erase(shot);
