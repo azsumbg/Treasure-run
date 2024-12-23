@@ -87,6 +87,10 @@ bool need_right_field = false;
 bool need_left_background = false;
 bool need_right_background = false;
 
+bool hero_killed = false;
+float RIP_x = 0;
+float RIP_y = 0;
+
 //////////////////////////////////////////////////
 
 ID2D1Factory* iFactory = nullptr;
@@ -1525,6 +1529,29 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!vEvils.empty() && Hero)
+        {
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
+            {
+                float a = (float)(pow((abs(((*evil)->x + (*evil)->GetWidth() / 2) - (Hero->x + Hero->GetWidth() / 2))), 2));
+                float b = (float)(pow((abs(((*evil)->y + (*evil)->GetHeight() / 2) - (Hero->y + Hero->GetHeight() / 2))), 2));
+                float distance = sqrt(a + b);
+
+                if (distance <= ((*evil)->GetWidth() / 2 + Hero->GetWidth() / 2))
+                {
+                    Hero->lifes -= (*evil)->Attack();
+                    if (Hero->lifes <= 0)
+                    {
+                        RIP_x = Hero->x;
+                        RIP_y = Hero->y;
+                        hero_killed = true;
+                        ClearHeap(&Hero);
+                        break;
+                    }
+                }
+            }
+        }
+        
         ///////////////////////////////////////////
         
         
@@ -1679,6 +1706,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (hero_killed)
+        {
+            Draw->DrawBitmap(bmpRIP, D2D1::RectF(RIP_x, RIP_y, RIP_x + 43.0f, RIP_y + 50.0f));
+            Draw->EndDraw();
+            if (sound)
+            {
+                PlaySound(NULL, NULL, NULL);
+                PlaySound(L".\\res\\snd\\killed.wav", NULL, SND_SYNC);
+            }
+            else Sleep(3000);
+            GameOver();
+        }
 
         //////////////////////////////////////
         Draw->EndDraw();
