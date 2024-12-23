@@ -1396,7 +1396,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         
         //CREATE AND MOVE EVILS *****************************
 
-        if (vEvils.size() < 8 + level && RandEngine(0, 300) == 222)
+        if (vEvils.size() < 4 + level && RandEngine(0, 350) == 333)
         {
             int atype = RandEngine(0, 4);
             
@@ -1465,12 +1465,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     }
 
                 char action = (*evil)->GetMoveFlag();
-                
+
                 if (Hero->ey < (*evil)->y && RandEngine(0, 100) == 66 && action != jump_up_flag && action != jump_down_flag)
                     (*evil)->Jump((float)(level), AllObstacles);
                     
                 
-                if (action == run_flag) (*evil)->Move((float)(level), Hero->x, (*evil)->y, AllObstacles);
+                if (action == run_flag)
+                {
+                    if (background_element_speed)
+                        (*evil)->Move((float)(level) * 10.0f, Hero->x, (*evil)->y, AllObstacles);
+                    else
+                        (*evil)->Move((float)(level), Hero->x, (*evil)->y, AllObstacles);
+                }
                 else if (action == fall_flag)(*evil)->Fall((float)(level), AllObstacles);
                 else if (action == jump_up_flag || action == jump_down_flag) (*evil)->Jump((float)(level), AllObstacles);
             }
@@ -1488,9 +1494,32 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!vEvils.empty() && !vShots.empty())
+        {
+            bool killed = false;
 
-
-
+            for (std::vector<dll::Creature>::iterator evil = vEvils.begin(); evil < vEvils.end(); evil++)
+            {
+                for (std::vector<dll::SHOT>::iterator shot = vShots.begin(); shot < vShots.end(); shot++)
+                {
+                    if (!((*evil)->x > shot->ex || (*evil)->ex < shot->x || (*evil)->y > shot->ey || (*evil)->ey < shot->y))
+                    {
+                        (*evil)->lifes -= 20;
+                        vShots.erase(shot);
+                        if ((*evil)->lifes <= 0)
+                        {
+                            (*evil)->Release();
+                            vEvils.erase(evil);
+                            score += 10 + level;
+                            if (sound)mciSendString(L"play .\\res\\snd\\evilkilled.wav", NULL, NULL, NULL);
+                            killed = true;
+                        }
+                        break;
+                    }
+                }
+                if (killed)break;
+            }
+        }
 
         ///////////////////////////////////////////
         
@@ -1565,6 +1594,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 Draw->DrawBitmap(bmpHeroR[Hero->GetFrame()], Resizer(bmpHeroR[Hero->GetFrame()], Hero->x, Hero->y));
                 break;
             }
+
+            if (inactBrush)
+                Draw->DrawLine(D2D1::Point2F(Hero->x, Hero->ey + 8.0f),
+                    D2D1::Point2F(Hero->x + (float)(Hero->lifes) / 2.5f, Hero->ey + 8.0f), inactBrush, 7.0f);
         }
 
         if (!vEvils.empty())
@@ -1608,6 +1641,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         vEvils[i]->x, vEvils[i]->y));
                     break;
                 }
+
+                if (inactBrush)
+                    Draw->DrawLine(D2D1::Point2F(vEvils[i]->x, vEvils[i]->ey + 8.0f),
+                        D2D1::Point2F(vEvils[i]->x + (float)(vEvils[i]->lifes) / 2.5f, vEvils[i]->ey + 8.0f), inactBrush, 7.0f);
             }
         }
 
