@@ -91,6 +91,8 @@ bool hero_killed = false;
 float RIP_x = 0;
 float RIP_y = 0;
 
+int number_of_crystals_collected = 0;
+
 //////////////////////////////////////////////////
 
 ID2D1Factory* iFactory = nullptr;
@@ -148,11 +150,11 @@ dll::Creature Hero = nullptr;
 
 std::vector<dll::Creature> vEvils;
 
-std::vector<dll::PROTON> vCrystals;
-std::vector<dll::PROTON> vGolds;
-std::vector<dll::PROTON> vLifes;
-
 std::vector<dll::SHOT> vShots;
+
+dll::PROTON* Potion{ nullptr };
+dll::PROTON* Crystal{ nullptr };
+dll::PROTON* Gold{ nullptr };
 
 //////////////////////////////////////////////////
 
@@ -243,6 +245,8 @@ void InitGame()
     wcscpy_s(current_player, L"ONE RUNNER");
     name_set = false;
 
+    number_of_crystals_collected = 0;
+
     background_element_speed = 0;
     background_element_dir = dirs::down;
 
@@ -270,12 +274,91 @@ void InitGame()
         for (int i = 0; i < vEvils.size(); ++i)ClearHeap(&vEvils[i]);
     vEvils.clear();
 
+    vShots.clear();
 
-    vCrystals.clear();
-    vGolds.clear();
-    vLifes.clear();
+    if (Potion)
+    {
+        delete Potion;
+        Potion = nullptr;
+    }
+    if (Gold)
+    {
+        delete Gold;
+        Gold = nullptr;
+    }
+    if (Crystal)
+    {
+        delete Crystal;
+        Crystal = nullptr;
+    }
+
+}
+void LevelUp()
+{
+    ++level;
+
+    number_of_crystals_collected = 0;
+
+    background_element_speed = 0;
+    background_element_dir = dirs::down;
+
+    vBackgrounds.clear();
+    for (float i = -scr_width; i < 2 * scr_width; i += scr_width)
+        vBackgrounds.push_back(dll::PROTON(i, 50.0f, scr_width, ground));
+    vFields.clear();
+    for (float i = -scr_width; i < 2 * scr_width; i += scr_width)
+        vFields.push_back(dll::PROTON(i, ground, scr_width, 50.0f));
+
+    vOnePlatforms.clear();
+    vTwoPlatforms.clear();
+    vThreePlatforms.clear();
+    vFourPlatforms.clear();
+
+    need_left_field = false;
+    need_right_field = false;
+    need_left_background = false;
+    need_right_background = false;
+
+    ClearHeap(&Hero);
+    Hero = dll::CreatureFactory(hero_type, scr_width / 2 - 100.0f, ground - 50.0f);
+
+    if (!vEvils.empty())
+        for (int i = 0; i < vEvils.size(); ++i)ClearHeap(&vEvils[i]);
+    vEvils.clear();
 
     vShots.clear();
+
+    if (Potion)
+    {
+        delete Potion;
+        Potion = nullptr;
+    }
+    if (Gold)
+    {
+        delete Gold;
+        Gold = nullptr;
+    }
+    if (Crystal)
+    {
+        delete Crystal;
+        Crystal = nullptr;
+    }
+
+    if (txtBrush && bigFormat)
+    {
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkSlateGray));
+        Draw->DrawTextW(L"СЛЕДВАЩО НИВО !", 16, bigFormat, D2D1::RectF(100.0f, 100.0f, scr_width, scr_height), txtBrush);
+        Draw->EndDraw();
+    }
+
+    if (sound)
+    {
+        PlaySound(NULL, NULL, NULL);
+        PlaySound(L".\\res\\snd\\levelup.wav", NULL, SND_SYNC);
+        PlaySound(snd_file, NULL, SND_LOOP | SND_ASYNC);
+    }
+    else Sleep(3000);
 }
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -1554,13 +1637,98 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         
         ///////////////////////////////////////////
         
+        // ASSETS *********************************
         
+        if (!Potion && RandEngine(0, 1800) == 888)
+            Potion = new dll::PROTON{ scr_width + RandEngine(0,100),ground - 32.0f,32.0f,32.0f };
+        if (Potion && Hero)
+        {
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
+            {
+                Potion->x += Hero->GetXAxisMove((float)(level));
+                Potion->SetEdges();
+                if (Potion->ex <= -scr_width || Potion->x >= 2 * scr_width)
+                {
+                    delete Potion;
+                    Potion = nullptr;
+                }
+            }
+            if(Potion)
+            {
+                if (!(Hero->x > Potion->ex || Hero->ex < Potion->x || Hero->y > Potion->ey || Hero->ey < Potion->y))
+                {
+                    delete Potion;
+                    Potion = nullptr;
+                    if (Hero->lifes + 20 <= 100)Hero->lifes += 20;
+                    else score += 20;
+                    if (sound)mciSendString(L"play .\\res\\snd\\takeasset.wav", NULL, NULL, NULL);
+                }
+            }
+        }
+
+        if (!Gold && RandEngine(0, 1500) == 556)
+            Gold = new dll::PROTON{ scr_width + RandEngine(0,100),ground - 32.0f,32.0f,32.0f };
+        if (Gold && Hero)
+        {
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
+            {
+                Gold->x += Hero->GetXAxisMove((float)(level));
+                Gold->SetEdges();
+                if (Gold->ex <= -scr_width || Gold->x >= 2 * scr_width)
+                {
+                    delete Gold;
+                    Gold = nullptr;
+                }
+            }
+            if(Gold)
+            {
+                if (!(Hero->x > Gold->ex || Hero->ex < Gold->x || Hero->y > Gold->ey || Hero->ey < Gold->y))
+                {
+                    delete Gold;
+                    Gold = nullptr;
+                    score += 50;
+                    if (sound)mciSendString(L"play .\\res\\snd\\takeasset.wav", NULL, NULL, NULL);
+                }
+            }
+        }
+
+        if (!Crystal && RandEngine(0, 2000) == 333)
+            Crystal = new dll::PROTON{ scr_width + RandEngine(0,100),ground - 32.0f,32.0f,32.0f };
+        if (Crystal && Hero)
+        {
+            char stopped = Hero->GetMoveFlag();
+            if (stopped != stop_flag)
+            {
+                Crystal->x += Hero->GetXAxisMove((float)(level));
+                Crystal->SetEdges();
+                if (Crystal->ex <= -scr_width || Crystal->x >= 2 * scr_width)
+                {
+                    delete Crystal;
+                    Crystal = nullptr;
+                }
+               
+            }
+            if(Crystal)
+            {
+                if (!(Hero->x > Crystal->ex || Hero->ex < Crystal->x || Hero->y > Crystal->ey || Hero->ey < Crystal->y))
+                {
+                    delete Crystal;
+                    Crystal = nullptr;
+                    ++number_of_crystals_collected;
+                    if (sound)mciSendString(L"play .\\res\\snd\\crystal.wav", NULL, NULL, NULL);
+                    if (number_of_crystals_collected > 8 + level)
+                    {
+                        Draw->EndDraw();
+                        LevelUp();
+                    }
+                }
+            }
+        }
         
-        
-        
-        
-        
-        
+
+
         // DRAW THINGS ******************
 
         Draw->BeginDraw();
@@ -1675,7 +1843,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                 if (inactBrush)
                     Draw->DrawLine(D2D1::Point2F(vEvils[i]->x, vEvils[i]->ey + 8.0f),
-                        D2D1::Point2F(vEvils[i]->x + (float)(vEvils[i]->lifes) / 2.5f, vEvils[i]->ey + 8.0f), inactBrush, 7.0f);
+                        D2D1::Point2F(vEvils[i]->x + (float)(vEvils[i]->lifes) / 1.5f, vEvils[i]->ey + 8.0f), inactBrush, 7.0f);
             }
         }
 
@@ -1706,6 +1874,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (Potion) Draw->DrawBitmap(bmpPotion, D2D1::RectF(Potion->x, Potion->y, Potion->ex, Potion->ey));
+        if (Gold) Draw->DrawBitmap(bmpGold, D2D1::RectF(Gold->x, Gold->y, Gold->ex, Gold->ey));
+        if (Crystal) Draw->DrawBitmap(bmpCrystal, D2D1::RectF(Crystal->x, Crystal->y, Crystal->ex, Crystal->ey));
+        
         if (hero_killed)
         {
             Draw->DrawBitmap(bmpRIP, D2D1::RectF(RIP_x, RIP_y, RIP_x + 43.0f, RIP_y + 50.0f));
