@@ -233,10 +233,76 @@ void ErrExit(int what)
     ReleaseResources();
     exit(1);
 }
+BOOL CheckRecord()
+{
+    if (score < 1)return no_record;
 
+    int result = 0;
+    CheckFile(record_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; i++)rec << static_cast<int>(current_player[i]) << std::endl;
+        rec.close();
+        return first_record;
+    }
+
+    std::wifstream check(record_file);
+    check >> result;
+    check.close();
+
+    if (result < score)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; i++)rec << static_cast<int>(current_player[i]) << std::endl;
+        rec.close();
+        return record;
+    }
+
+    return no_record;
+
+}
 void GameOver()
 {
     PlaySound(NULL, NULL, NULL);
+
+    switch (CheckRecord())
+    {
+    case no_record:
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::Beige));
+        if (bigFormat && statTxtBrush)
+            Draw->DrawTextW(L"О, О, О ! ЗАГУБИ !", 19, bigFormat, 
+                D2D1::RectF(200.0f, 100.0f, scr_width, scr_height), statTxtBrush);
+        Draw->EndDraw();
+        if (sound)PlaySound(L".\\res\\snd\\loose.wav", NULL, SND_SYNC);
+        else Sleep(3000);
+        break;
+
+    case first_record:
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::Beige));
+        if (bigFormat && statTxtBrush)
+            Draw->DrawTextW(L"ПЪРВИ РЕКОРД НА ИГРАТА !", 25, bigFormat, 
+                D2D1::RectF(50.0f, 100.0f, scr_width, scr_height), statTxtBrush);
+        Draw->EndDraw();
+        if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_SYNC);
+        else Sleep(3000);
+        break;
+
+    case record:
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::Beige));
+        if (bigFormat && statTxtBrush)
+            Draw->DrawTextW(L"НОВ СВЕТОВЕН РЕКОРД !", 22, bigFormat,
+                D2D1::RectF(50.0f, 100.0f, scr_width, scr_height), statTxtBrush);
+        Draw->EndDraw();
+        if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_SYNC);
+        else Sleep(3000);
+        break;
+    }
 
     bMsg.message = WM_QUIT;
     bMsg.wParam = 0;
@@ -621,7 +687,39 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
         break;
 
     case WM_LBUTTONDOWN:
-        if (Hero)
+        if (HIWORD(lParam) <= 50)
+        {
+            if (LOWORD(lParam) >= b1Rect.left && LOWORD(lParam) <= b1Rect.right)
+            {
+                if (name_set)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                    break;
+                }
+                else
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                    if (DialogBox(bIns, MAKEINTRESOURCE(IDD_PLAYER), hwnd, &bDlgProc) == IDOK)name_set = true;
+                    break;
+                }
+            }
+            if (LOWORD(lParam) >= b2Rect.left && LOWORD(lParam) <= b2Rect.right)
+            {
+                mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                if (sound)
+                {
+                    sound = false;
+                    PlaySound(NULL, NULL, NULL);
+                    break;
+                }
+                else
+                {
+                    sound = true;
+                    PlaySound(snd_file, NULL, SND_LOOP | SND_ASYNC);
+                }
+            }
+        }
+        else if (Hero)
         {
             vShots.push_back(dll::SHOT(Hero->x + Hero->GetWidth() / 2, Hero->y + Hero->GetHeight() / 2,
                 LOWORD(lParam), HIWORD(lParam)));
@@ -1019,6 +1117,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     }
 
     CreateResources();
+
+    PlaySound(snd_file, NULL, SND_LOOP | SND_ASYNC);
 
     while (bMsg.message != WM_QUIT)
     {
@@ -1627,6 +1727,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 if (distance <= ((*evil)->GetWidth() / 2 + Hero->GetWidth() / 2))
                 {
                     Hero->lifes -= (*evil)->Attack();
+                    if (sound)mciSendString(L"play .\\res\\snd\\hero_hurt.wav", NULL, NULL, NULL);
                     if (Hero->lifes <= 0)
                     {
                         RIP_x = Hero->x;
@@ -1731,8 +1832,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
         
-
-
         // DRAW THINGS ******************
 
         Draw->BeginDraw();
@@ -1936,11 +2035,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
 
             Draw->DrawTextW(status_txt, txt_size, midFormat,
-                D2D1::RectF(20.0f, ground + 10.0f, scr_width, scr_height), statTxtBrush);
+                D2D1::RectF(20.0f, ground + 5.0f, scr_width, scr_height), statTxtBrush);
 
         }
-
-
 
         //////////////////////////////////////
         Draw->EndDraw();
