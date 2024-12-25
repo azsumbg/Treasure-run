@@ -103,6 +103,8 @@ ID2D1SolidColorBrush* txtBrush = nullptr;
 ID2D1SolidColorBrush* hgltBrush = nullptr;
 ID2D1SolidColorBrush* inactBrush = nullptr;
 
+ID2D1SolidColorBrush* statTxtBrush = nullptr;
+
 IDWriteFactory* iWriteFactory = nullptr;
 IDWriteTextFormat* txtFormat = nullptr;
 IDWriteTextFormat* midFormat = nullptr;
@@ -186,6 +188,7 @@ void ReleaseResources()
     if (!ClearHeap(&txtBrush))LogError(L"Error releasing txtBrush !");
     if (!ClearHeap(&hgltBrush))LogError(L"Error releasing hgltBrush !");
     if (!ClearHeap(&inactBrush))LogError(L"Error releasing inactBrush !");
+    if (!ClearHeap(&statTxtBrush))LogError(L"Error releasing hgltBrush !");
 
     if (!ClearHeap(&iWriteFactory))LogError(L"Error releasing iWriteFactory !");
     if (!ClearHeap(&txtFormat))LogError(L"Error releasing txtFormat !");
@@ -723,6 +726,7 @@ void CreateResources()
             hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Green), &txtBrush);
             hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Violet), &hgltBrush);
             hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DarkSlateBlue), &inactBrush);
+            hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DarkBlue), &statTxtBrush);
 
             if (hr != S_OK)
             {
@@ -971,7 +975,7 @@ void CreateResources()
         }
     }
 
-    if (Draw && txtBrush && bigFormat)
+    if (Draw && statTxtBrush && bigFormat)
     {
         int intro_frame = 0;
 
@@ -984,7 +988,7 @@ void CreateResources()
             if (RandEngine(0, 4) == 1)
             {
                 Draw->DrawTextW(L"ЛОВ ЗА СЪКРОВИЩА !\n\n   dev. Daniel", 35, bigFormat, D2D1::RectF(30.0f, 80.0f, scr_width,
-                    scr_height), txtBrush);
+                    scr_height), statTxtBrush);
                 mciSendString(L"play .\\res\\snd\\buzz.wav", NULL, NULL, NULL);
                 Draw->EndDraw();
                 Sleep(60);
@@ -999,7 +1003,7 @@ void CreateResources()
         Draw->BeginDraw();
         Draw->DrawBitmap(bmpIntro[0], D2D1::RectF(0, 0, scr_width, scr_height));
         Draw->DrawTextW(L"ЛОВ ЗА СЪКРОВИЩА !\n\n   dev. Daniel", 35, bigFormat, D2D1::RectF(30.0f, 80.0f, scr_width,
-            scr_height), txtBrush);
+            scr_height), statTxtBrush);
         Draw->EndDraw();
         PlaySound(L".\\res\\snd\\boom.wav", NULL, SND_SYNC);
     }
@@ -1890,6 +1894,53 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             else Sleep(3000);
             GameOver();
         }
+
+        // STATUS TEXT ************************
+
+        Draw->DrawBitmap(bmpCrystal, D2D1::RectF(scr_width / 2 - 50.0f, 70.0f, scr_width / 2, 120.0f));
+        
+        wchar_t status_txt[150] = L"\0";
+        wchar_t add[5] = L"\0";
+        int txt_size = 0;
+
+        wcscpy_s(status_txt, L" : ");
+        wsprintf(add, L"%d", 9 + level - number_of_crystals_collected);
+        wcscat_s(status_txt, add);
+
+        for (int i = 0; i < 150; ++i)
+        {
+            if (status_txt[i] != '\0')++txt_size;
+            else break;
+        }
+
+        if (midFormat && statTxtBrush)
+        {
+            Draw->DrawTextW(status_txt, txt_size, midFormat,
+                D2D1::RectF(scr_width / 2, 70.0f, scr_width, 150.0f), statTxtBrush);
+            txt_size = 0;
+        
+            wcscpy_s(status_txt, current_player);
+
+            wcscat_s(status_txt, L", ниво: ");
+            wsprintf(add, L"%d", level);
+            wcscat_s(status_txt, add);
+
+            wcscat_s(status_txt, L", резултат: ");
+            wsprintf(add, L"%d", score);
+            wcscat_s(status_txt, add);
+        
+            for (int i = 0; i < 150; ++i)
+            {
+                if (status_txt[i] != '\0')++txt_size;
+                else break;
+            }
+
+            Draw->DrawTextW(status_txt, txt_size, midFormat,
+                D2D1::RectF(20.0f, ground + 10.0f, scr_width, scr_height), statTxtBrush);
+
+        }
+
+
 
         //////////////////////////////////////
         Draw->EndDraw();
