@@ -409,7 +409,6 @@ void InitGame()
         delete Crystal;
         Crystal = nullptr;
     }
-
 }
 void LevelUp()
 {
@@ -478,7 +477,302 @@ void LevelUp()
     }
     else Sleep(3000);
 }
+void SaveGame()
+{
+    int result = 0;
+    CheckFile(save_file, &result);
+    if (result == FILE_EXIST)
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+        if (MessageBox(bHwnd, L"Има предишна записана игра, която ще загубиш !\n\nДа я презапиша ли ?",
+            L"Презапис", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO) return;
+    }
 
+    std::wofstream save(save_file);
+
+    save << level << std::endl;
+    save << score << std::endl;
+    save << number_of_crystals_collected << std::endl;
+    save << hero_killed << std::endl;
+    for (int i = 0; i < 16; i++)save << static_cast<int>(current_player[i]) << std::endl;
+    save << name_set << std::endl;
+
+    save << vEvils.size() << std::endl;
+    if (!vEvils.empty())
+    {
+        for (int i = 0; i < vEvils.size(); ++i)
+        {
+            save << static_cast<int>(vEvils[i]->GetTypeFlag()) << std::endl;
+            save << vEvils[i]->x << std::endl;
+            save << vEvils[i]->y << std::endl;
+            save << vEvils[i]->lifes << std::endl;
+        }
+    }
+
+    save << vOnePlatforms.size() << std::endl;
+    if (!vOnePlatforms.empty())
+    {
+        for (int i = 0; i < vOnePlatforms.size(); ++i)
+        {
+            save << vOnePlatforms[i].x << std::endl;
+            save << vOnePlatforms[i].y << std::endl;
+        }
+    }
+
+    save << vTwoPlatforms.size() << std::endl;
+    if (!vTwoPlatforms.empty())
+    {
+        for (int i = 0; i < vTwoPlatforms.size(); ++i)
+        {
+            save << vTwoPlatforms[i].x << std::endl;
+            save << vTwoPlatforms[i].y << std::endl;
+        }
+    }
+
+    save << vThreePlatforms.size() << std::endl;
+    if (!vThreePlatforms.empty())
+    {
+        for (int i = 0; i < vThreePlatforms.size(); ++i)
+        {
+            save << vThreePlatforms[i].x << std::endl;
+            save << vThreePlatforms[i].y << std::endl;
+        }
+    }
+
+    save << vFourPlatforms.size() << std::endl;
+    if (!vFourPlatforms.empty())
+    {
+        for (int i = 0; i < vFourPlatforms.size(); ++i)
+        {
+            save << vFourPlatforms[i].x << std::endl;
+            save << vFourPlatforms[i].y << std::endl;
+        }
+    }
+    
+    if (Potion)
+    {
+        save << 1 << std::endl;
+        save << Potion->x << std::endl;
+        save << Potion->y << std::endl;
+    }
+    else save << 0 << std::endl;
+    
+    if (Gold)
+    {
+        save << 1 << std::endl;
+        save << Gold->x << std::endl;
+        save << Gold->y << std::endl;
+    } 
+    else save << 0 << std::endl;
+
+    if (Crystal)
+    {
+        save << 1 << std::endl;
+        save << Crystal->x << std::endl;
+        save << Crystal->y << std::endl;
+    }
+    else save << 0 << std::endl;
+
+    save.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+
+    MessageBox(bHwnd, L"Играта е запазена !", L"Запис !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
+}
+void LoadGame()
+{
+    int result = 0;
+
+    CheckFile(save_file, &result);
+
+    if (result == FILE_EXIST)
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+        if (MessageBox(bHwnd, L"Настоящата игра ще бъде изгубена !\n\nДа я презапиша ли ?",
+            L"Презапис", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO) return;
+    }
+    else
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+        MessageBox(bHwnd, L"Все още няма записана игра !\n\nПостарай се повече !",
+            L"Липсва файл !", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    background_element_speed = 0;
+    background_element_dir = dirs::down;
+
+    vBackgrounds.clear();
+    for (float i = -scr_width; i < 2 * scr_width; i += scr_width)
+        vBackgrounds.push_back(dll::PROTON(i, 50.0f, scr_width, ground));
+    vFields.clear();
+    for (float i = -scr_width; i < 2 * scr_width; i += scr_width)
+        vFields.push_back(dll::PROTON(i, ground, scr_width, 50.0f));
+
+    vOnePlatforms.clear();
+    vTwoPlatforms.clear();
+    vThreePlatforms.clear();
+    vFourPlatforms.clear();
+
+    need_left_field = false;
+    need_right_field = false;
+    need_left_background = false;
+    need_right_background = false;
+
+    ClearHeap(&Hero);
+    Hero = dll::CreatureFactory(hero_type, scr_width / 2 - 100.0f, ground - 50.0f);
+
+    if (!vEvils.empty())
+        for (int i = 0; i < vEvils.size(); ++i)ClearHeap(&vEvils[i]);
+    vEvils.clear();
+
+    vShots.clear();
+
+    if (Potion)
+    {
+        delete Potion;
+        Potion = nullptr;
+    }
+    if (Gold)
+    {
+        delete Gold;
+        Gold = nullptr;
+    }
+    if (Crystal)
+    {
+        delete Crystal;
+        Crystal = nullptr;
+    }
+
+    std::wifstream save(save_file);
+
+    save >> level;
+    save >> score;
+    save >> number_of_crystals_collected;
+    save >> hero_killed;
+    for (int i = 0; i < 16; i++)
+    {
+        int letter = 0;
+        save >> letter;
+        current_player[i] = static_cast<wchar_t>(letter);
+    }
+    save >> name_set;
+    if (hero_killed)GameOver();
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; ++i)
+        {
+            int int_type = 0;
+            float sx = 0;
+            float sy = 0;
+            float temp_lifes = 0;
+            
+            save >> int_type;
+            save >> sx;
+            save >> sy;
+            save >> temp_lifes;
+
+            vEvils.push_back(dll::CreatureFactory(static_cast<char>(int_type), sx, sy));
+            vEvils.back()->lifes = temp_lifes;
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; i++)
+        {
+            float sx = 0;
+            float sy = 0;
+            save >> sx;
+            save >> sy;
+            vOnePlatforms.push_back(dll::PROTON(sx, sy, 140.0f, 80.0f));
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; i++)
+        {
+            float sx = 0;
+            float sy = 0;
+            save >> sx;
+            save >> sy;
+            vTwoPlatforms.push_back(dll::PROTON(sx, sy, 150.0f, 94.0f));
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; i++)
+        {
+            float sx = 0;
+            float sy = 0;
+            save >> sx;
+            save >> sy;
+            vThreePlatforms.push_back(dll::PROTON(sx, sy, 110.0f, 90.0f));
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; i++)
+        {
+            float sx = 0;
+            float sy = 0;
+            save >> sx;
+            save >> sy;
+            vFourPlatforms.push_back(dll::PROTON(sx, sy, 85.0f, 100.0f));
+        }
+    }
+
+    save >> result;
+    if (result)
+    {
+        float sx = 0;
+        float sy = 0;
+
+        save >> sx;
+        save >> sy;
+
+        Potion = new dll::PROTON(sx, sy, 32.0f, 32.0f);
+    }
+
+    save >> result;
+    if (result)
+    {
+        float sx = 0;
+        float sy = 0;
+
+        save >> sx;
+        save >> sy;
+
+        Gold = new dll::PROTON(sx, sy, 32.0f, 32.0f);
+    }
+
+    save >> result;
+    if (result)
+    {
+        float sx = 0;
+        float sy = 0;
+
+        save >> sx;
+        save >> sy;
+
+        Crystal = new dll::PROTON(sx, sy, 32.0f, 32.0f);
+    }
+    
+    save.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+
+    MessageBox(bHwnd, L"Играта е заредена !", L"Зареждане !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
+}
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -664,6 +958,17 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
             SendMessage(hwnd, WM_CLOSE, NULL, NULL);
             break;
 
+        case mSave:
+            pause = true;
+            SaveGame();
+            pause = false;
+            break;
+
+        case mLoad:
+            pause = true;
+            LoadGame();
+            pause = false;
+            break;
 
         case mHoF:
             pause = true;
